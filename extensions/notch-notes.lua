@@ -97,6 +97,9 @@ local function reconstruct()
 end
 
 local function sync_ui()
+  if not tui_mode then
+    return
+  end
   if #notes == 0 then
     notch.ui.set_status(STATUS_KEY, "")
     notch.ui.set_panel(PANEL_KEY, "", {})
@@ -196,11 +199,8 @@ notch.register_command({
     if text == "" then
       return "Usage: /note <note text>"
     end
-    if not tui_mode then
-      local ok = pcall(notch.session.entries, ENTRY_KIND)
-      if not ok then
-        return "/note requires session persistence."
-      end
+    if not reconstruct() then
+      return "/note requires session persistence."
     end
 
     local id = tostring(next_id)
@@ -285,6 +285,8 @@ end)
 notch.on("session_change", function()
   if tui_mode then
     load_state()
+  else
+    reconstruct()
   end
 end)
 
