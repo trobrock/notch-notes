@@ -6,6 +6,7 @@ local MAX_PANEL_NOTES = 12
 
 local notes = {}
 local next_id = 1
+local tui_mode = false
 
 local function trim(value)
   return (value:gsub("^%s+", ""):gsub("%s+$", ""))
@@ -63,7 +64,7 @@ local function reconstruct()
   local ok, entries = pcall(notch.session.entries, ENTRY_KIND)
   if not ok then
     notes = {}
-    return
+    return false
   end
   for _, entry in ipairs(entries) do
     if type(entry) == "table" and entry.action == "add" and type(entry.note) == "table" then
@@ -92,6 +93,7 @@ local function reconstruct()
       notes[#notes + 1] = active[id]
     end
   end
+  return true
 end
 
 local function sync_ui()
@@ -115,8 +117,13 @@ local function sync_ui()
 end
 
 local function load_state()
-  reconstruct()
-  sync_ui()
+  if reconstruct() then
+    sync_ui()
+  else
+    notch.ui.set_status(STATUS_KEY, "")
+    notch.ui.set_panel(PANEL_KEY, "", {})
+    notch.ui.notify("Session notes are unavailable because session persistence is disabled.", "warning")
+  end
 end
 
 local function append_to_editor(existing, addition)
@@ -189,6 +196,12 @@ notch.register_command({
     if text == "" then
       return "Usage: /note <note text>"
     end
+    if not tui_mode then
+      local ok = pcall(notch.session.entries, ENTRY_KIND)
+      if not ok then
+        return "/note requires session persistence."
+      end
+    end
 
     local id = tostring(next_id)
     next_id = next_id + 1
@@ -208,6 +221,9 @@ notch.register_command({
   name = "notes",
   description = "Pick a saved session note and move it to the prompt editor",
   execute = function(args)
+    if not tui_mode then
+      return "/notes requires the fullscreen TUI."
+    end
     local subcommand = trim(args)
     reconstruct()
     sync_ui()
@@ -258,20 +274,25 @@ notch.register_command({
 })
 
 notch.on("session_start", function(event)
-  if event.mode ~= "tui" then
+  tui_mode = event.mode == "tui"
+  if not tui_mode then
+    reconstruct()
     return
   end
   load_state()
 end)
 
 notch.on("session_change", function()
-  load_state()
+  if tui_mode then
+    load_state()
+  end
 end)
 
-notch.on("session_shutdown", function(event)
+notch.on("session_shutdown", function()
   notes = {}
-  if event.mode == "tui" then
+  if tui_mode then
     notch.ui.set_status(STATUS_KEY, "")
     notch.ui.set_panel(PANEL_KEY, "", {})
   end
+  tui_mode = false
 end)
