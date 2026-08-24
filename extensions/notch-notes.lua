@@ -60,7 +60,11 @@ local function reconstruct()
   local order = {}
   next_id = 1
 
-  local entries = notch.session.entries(ENTRY_KIND)
+  local ok, entries = pcall(notch.session.entries, ENTRY_KIND)
+  if not ok then
+    notes = {}
+    return
+  end
   for _, entry in ipairs(entries) do
     if type(entry) == "table" and entry.action == "add" and type(entry.note) == "table" then
       local note = entry.note
@@ -253,7 +257,10 @@ notch.register_command({
   end,
 })
 
-notch.on("session_start", function()
+notch.on("session_start", function(event)
+  if event.mode ~= "tui" then
+    return
+  end
   load_state()
 end)
 
@@ -261,8 +268,10 @@ notch.on("session_change", function()
   load_state()
 end)
 
-notch.on("session_shutdown", function()
+notch.on("session_shutdown", function(event)
   notes = {}
-  notch.ui.set_status(STATUS_KEY, "")
-  notch.ui.set_panel(PANEL_KEY, "", {})
+  if event.mode == "tui" then
+    notch.ui.set_status(STATUS_KEY, "")
+    notch.ui.set_panel(PANEL_KEY, "", {})
+  end
 end)
