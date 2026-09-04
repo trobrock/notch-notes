@@ -194,6 +194,7 @@ end
 notch.register_command({
   name = "note",
   description = "Save text as a note in the current session",
+  allow_while_streaming = true,
   execute = function(args)
     local text = trim(args)
     if text == "" then
