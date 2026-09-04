@@ -4,7 +4,7 @@ Durable, per-session notes for [Notch](https://github.com/trobrock/notch).
 
 ## Features
 
-- `/note <text>` saves a note in the current Notch session.
+- `/note <text>` saves a note in the current Notch session, including while a model response is streaming.
 - `/notes` picks a saved note and moves it into the prompt editor.
 - `/notes clear` clears pending notes after confirmation.
 - Pending notes appear in the fullscreen status and panel.
